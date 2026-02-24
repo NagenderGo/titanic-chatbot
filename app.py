@@ -1,32 +1,32 @@
 import streamlit as st
 import pandas as pd
-import requests
 
-st.set_page_config(page_title="Titanic Chatbot", layout="centered")
+st.set_page_config(page_title="Titanic Dataset Chatbot")
+
 st.title("🚢 Titanic Dataset AI Chatbot")
 
-st.markdown("Ask questions about the Titanic dataset in plain English 👇")
+df = pd.read_csv("data/titanic.csv")
 
-@st.cache_data
-def load_data():
-    return pd.read_csv("data/titanic.csv")
-
-df = load_data()
-
-with st.expander("📊 Dataset Preview"):
-    st.dataframe(df.head())
+st.write("Ask questions about the Titanic dataset")
 
 question = st.text_input("Your question:")
 
 if question:
-    with st.spinner("Thinking... 🤖"):
-        response = requests.post(
-            "http://127.0.0.1:8000/ask",
-            json={"question": question}
-        )
+    q = question.lower()
 
-        if response.status_code == 200:
-            answer = response.json()["answer"]
-            st.success(answer)
-        else:
-            st.error("❌ Failed to get response from backend")
+    if "percentage" in q and "male" in q:
+        pct = (df["Sex"].value_counts(normalize=True)["male"]) * 100
+        st.success(f"{pct:.2f}% of passengers were male.")
+
+    elif "average" in q and "fare" in q:
+        st.success(f"Average ticket fare was {df['Fare'].mean():.2f}.")
+
+    elif "age" in q:
+        st.success(f"Average passenger age was {df['Age'].mean():.2f} years.")
+
+    elif "embarked" in q:
+        counts = df["Embarked"].value_counts()
+        st.write(counts)
+
+    else:
+        st.warning("Please ask about gender, fare, age, or embarkation.")
