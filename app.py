@@ -142,3 +142,4 @@ if question.strip():
             "• survival\n"
             "• embarkation"
         )
+
