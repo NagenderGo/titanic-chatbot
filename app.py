@@ -1,11 +1,15 @@
 import streamlit as st
 import pandas as pd
+import os
 
 st.set_page_config(page_title="Titanic Dataset Chatbot")
 
 st.title("🚢 Titanic Dataset AI Chatbot")
 
-df = pd.read_csv("data/titanic.csv")
+BASE_DIR = os.path.dirname(__file__)
+DATA_PATH = os.path.join(BASE_DIR, "data", "titanic.csv")
+
+df = pd.read_csv(DATA_PATH)
 
 st.write("Ask questions about the Titanic dataset")
 
@@ -25,8 +29,7 @@ if question:
         st.success(f"Average passenger age was {df['Age'].mean():.2f} years.")
 
     elif "embarked" in q:
-        counts = df["Embarked"].value_counts()
-        st.write(counts)
+        st.write(df["Embarked"].value_counts())
 
     else:
-        st.warning("Please ask about gender, fare, age, or embarkation.")
+        st.warning("Ask about gender, fare, age, or embarkation.")
