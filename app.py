@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(
     page_title="Titanic Dataset AI Chatbot",
@@ -11,6 +13,7 @@ st.set_page_config(
 
 st.title("🚢 Titanic Dataset AI Chatbot")
 st.write("Ask questions about the Titanic dataset in plain English")
+
 
 @st.cache_data
 def load_data():
@@ -23,86 +26,119 @@ with st.expander("📊 Dataset Preview"):
     st.dataframe(df.head())
 
 
-if "chat" not in st.session_state:
-    st.session_state.chat = []
+training_questions = [
+    "what percentage of passengers were male",
+    "how many females were there",
+    "gender distribution",
+    "average age of passengers",
+    "how old were passengers",
+    "age distribution",
+    "average ticket fare",
+    "ticket price",
+    "fare amount",
+    "how many passengers embarked from each port",
+    "embarkation count",
+    "ports passengers boarded from",
+    "survival rate",
+    "how many survived",
+    "who lived"
+]
+
+training_labels = [
+    "gender",
+    "gender",
+    "gender",
+    "age",
+    "age",
+    "age",
+    "fare",
+    "fare",
+    "fare",
+    "embarkation",
+    "embarkation",
+    "embarkation",
+    "survival",
+    "survival",
+    "survival"
+]
+
+vectorizer = TfidfVectorizer()
+X_train = vectorizer.fit_transform(training_questions)
+
+model = LogisticRegression()
+model.fit(X_train, training_labels)
+
+
+def predict_intent(question):
+    X_test = vectorizer.transform([question])
+    return model.predict(X_test)[0]
+
 
 question = st.text_input("Your question:")
 
 
-male_words = ["male", "men", "man", "boys"]
-female_words = ["female", "women", "woman", "girls"]
-fare_words = ["fare", "ticket", "price", "cost"]
-age_words = ["age", "old", "years"]
-embark_words = ["embarked", "embark", "port", "boarding"]
-survival_words = ["survived", "survival", "alive", "death"]
+if question.strip():
+    intent = predict_intent(question.lower())
 
 
-if question:
-    q = question.lower().strip()
-    answer = ""
+    if intent == "gender":
+        male_pct = (df["Sex"] == "male").mean() * 100
+        female_pct = 100 - male_pct
 
-    if any(word in q for word in male_words):
-        value = (df["Sex"] == "male").mean() * 100
-        answer = f"{value:.2f}% of passengers were male."
-
-    elif any(word in q for word in female_words):
-        value = (df["Sex"] == "female").mean() * 100
-        answer = f"{value:.2f}% of passengers were female."
-
-    elif any(word in q for word in fare_words):
-        value = df["Fare"].mean()
-        answer = f"Average ticket fare was {value:.2f}."
+        st.success(
+            f"• Male passengers: {male_pct:.2f}%\n"
+            f"• Female passengers: {female_pct:.2f}%"
+        )
 
         fig, ax = plt.subplots()
-        df["Fare"].hist(bins=30, ax=ax)
-        ax.set_title("Fare Distribution")
-        ax.set_xlabel("Fare")
-        ax.set_ylabel("Passengers")
+        ax.bar(["Male", "Female"], [male_pct, female_pct])
+        ax.set_ylabel("Percentage")
+        ax.set_title("Gender Distribution")
         st.pyplot(fig)
 
-    elif any(word in q for word in age_words):
-        value = df["Age"].mean()
-        answer = f"Average age of passengers was {value:.2f} years."
+    elif intent == "age":
+        avg_age = df["Age"].mean()
+        st.success(f"Average age of passengers was {avg_age:.2f} years.")
 
         fig, ax = plt.subplots()
-        df["Age"].dropna().hist(bins=30, ax=ax)
+        df["Age"].dropna().hist(ax=ax, bins=20)
         ax.set_title("Age Distribution")
         ax.set_xlabel("Age")
-        ax.set_ylabel("Passengers")
-        st.pyplot(fig)
-
-  
-    elif any(word in q for word in survival_words):
-        survival_rate = df["Survived"].mean() * 100
-        answer = f"Overall survival rate was {survival_rate:.2f}%."
-
-        survival_by_gender = df.groupby("Sex")["Survived"].mean() * 100
-
-        fig, ax = plt.subplots()
-        survival_by_gender.plot(kind="bar", ax=ax)
-        ax.set_title("Survival Rate by Gender")
-        ax.set_ylabel("Survival Percentage")
-        st.pyplot(fig)
-                                  
-    elif any(word in q for word in embark_words):
-        embark_counts = df["Embarked"].value_counts()
-        answer = "Passenger embarkation counts shown below."
-
-        fig, ax = plt.subplots()
-        embark_counts.plot(kind="bar", ax=ax)
-        ax.set_title("Passengers by Embarkation Port")
         ax.set_ylabel("Count")
         st.pyplot(fig)
 
+    elif intent == "fare":
+        avg_fare = df["Fare"].mean()
+        st.success(f"Average ticket fare was {avg_fare:.2f}.")
+
+   
+    elif intent == "embarkation":
+        counts = df["Embarked"].value_counts()
+        st.success(
+            f"Passengers embarked from:\n\n"
+            f"• Southampton (S): {counts.get('S', 0)}\n"
+            f"• Cherbourg (C): {counts.get('C', 0)}\n"
+            f"• Queenstown (Q): {counts.get('Q', 0)}"
+        )
+
+        fig, ax = plt.subplots()
+        counts.plot(kind="bar", ax=ax)
+        ax.set_title("Passengers by Embarkation Port")
+        ax.set_xlabel("Port")
+        ax.set_ylabel("Passengers")
+        st.pyplot(fig)
+
+    elif intent == "survival":
+        survival_rate = df["Survived"].mean() * 100
+        st.success(f"Overall survival rate was {survival_rate:.2f}%.")
+
     else:
-        answer = "Ask about gender, survival, age, fare, or embarkation."
-
-    st.session_state.chat.append(("You", question))
-    st.session_state.chat.append(("Bot", answer))
-
-
-for speaker, msg in st.session_state.chat:
-    if speaker == "You":
-        st.markdown(f"**🧑 You:** {msg}")
-    else:
-        st.success(msg)
+        st.warning(
+            "I couldn't understand the question.\n\n"
+            "Try asking about:\n"
+            "• gender\n"
+            "• age\n"
+            "• fare\n"
+            "• survival\n"
+            "• embarkation"
+        )
